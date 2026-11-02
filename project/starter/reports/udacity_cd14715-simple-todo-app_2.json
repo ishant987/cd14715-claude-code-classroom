@@ -1,0 +1,146 @@
+{
+  "pullRequest": {
+    "owner": "udacity",
+    "repo": "cd14715-simple-todo-app",
+    "number": 2
+  },
+  "fileReviews": [
+    {
+      "file": "src/todo.ts",
+      "codeQuality": {
+        "file": "src/todo.ts",
+        "issues": [
+          {
+            "line": 121,
+            "severity": "critical",
+            "category": "security",
+            "description": "SQL Injection: User input keyword is directly interpolated into SQL query via template literal (${keyword}).",
+            "suggestion": "Use parameterized queries: const query = \"SELECT * FROM todos WHERE title LIKE $1 OR description LIKE $1\"; const rows = await db.query(query, [`%${keyword}%`]);"
+          },
+          {
+            "line": 132,
+            "severity": "critical",
+            "category": "security",
+            "description": "SQL Injection: User input completed is concatenated directly into SQL statement (+ completed) without sanitization or parameterization.",
+            "suggestion": "Use parameterized queries: const sql = \"SELECT * FROM todos WHERE completed = $1\"; const rows = await db.query(sql, [completed === \"true\"]);"
+          },
+          {
+            "line": 143,
+            "severity": "critical",
+            "category": "security",
+            "description": "SQL Injection: userId parameter in getTodosByUser is directly concatenated into SQL query string.",
+            "suggestion": "Use parameterized query: const query = \"SELECT t.* FROM todos t JOIN user_todos ut ON t.id = ut.todo_id WHERE ut.user_id = $1\"; const rows = await db.query(query, [userId]);"
+          },
+          {
+            "line": 123,
+            "severity": "medium",
+            "category": "performance",
+            "description": "Unindexed wildcard search (LIKE %keyword%) causes full table scans on large datasets.",
+            "suggestion": "Implement full-text search indexing or Trigram indexes for performant search."
+          }
+        ],
+        "overallScore": 28,
+        "summary": "Severe security vulnerabilities identified. Multiple new search endpoints expose the application to devastating SQL injection attacks via unparameterized query interpolation."
+      },
+      "testCoverage": {
+        "file": "src/todo.ts",
+        "hasTests": true,
+        "testFiles": [
+          "tests/todo.test.ts"
+        ],
+        "untestedPaths": [
+          {
+            "type": "function",
+            "location": "searchTodos(keyword: string)",
+            "priority": "critical",
+            "reasoning": "Critical new search method lacks unit tests covering keyword matching, empty keywords, and SQL injection payload safety.",
+            "suggestedTest": "it(\"safely handles SQL injection payloads in searchTodos\", async () => { const results = await searchTodos(\"' OR '1'='1\"); expect(Array.isArray(results)).toBe(true); });"
+          },
+          {
+            "type": "function",
+            "location": "searchTodosByStatus(completed: string)",
+            "priority": "high",
+            "reasoning": "Status filter function requires tests for boolean strings (\"true\", \"false\") and invalid status inputs.",
+            "suggestedTest": "it(\"filters todos by completion status safely\", async () => { const completedTodos = await searchTodosByStatus(\"true\"); expect(completedTodos.every(t => t.completed)).toBe(true); });"
+          },
+          {
+            "type": "function",
+            "location": "getTodosByUser(userId: string)",
+            "priority": "high",
+            "reasoning": "User association search needs tests verifying isolation of user todos across different accounts.",
+            "suggestedTest": "it(\"returns only todos associated with given user\", async () => { const todos = await getTodosByUser(\"user-123\"); expect(todos).toHaveLength(1); });"
+          }
+        ],
+        "coverageEstimate": 35,
+        "summary": "All three new search functions lack unit test coverage. Critical need for tests verifying parameterized query safety."
+      },
+      "refactorings": {
+        "file": "src/todo.ts",
+        "suggestions": [
+          {
+            "type": "pattern-improvement",
+            "location": "lines 119-145",
+            "impact": "high",
+            "description": "Adopt parameterized queries repository pattern across all search endpoints.",
+            "before": "const query = `SELECT * FROM todos WHERE title LIKE '%${keyword}%' OR description LIKE '%${keyword}%'`;\nconst rows = await db.query(query);",
+            "after": "const query = 'SELECT * FROM todos WHERE title LIKE $1 OR description LIKE $1';\nconst rows = await db.query(query, [`%${keyword}%`]);",
+            "benefits": "Eliminates SQL injection vulnerabilities and allows database query plan caching."
+          },
+          {
+            "type": "simplify",
+            "location": "lines 129-134",
+            "impact": "medium",
+            "description": "Accept boolean type for completed instead of loose string parameter.",
+            "before": "export async function searchTodosByStatus(completed: string): Promise<Todo[]> {",
+            "after": "export async function searchTodosByStatus(completed: boolean): Promise<Todo[]> {",
+            "benefits": "Strong type safety and eliminates parsing vulnerabilities."
+          }
+        ],
+        "summary": "Refactor search methods to enforce parameterized SQL execution and strict type signatures."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 1,
+    "overallScore": 28,
+    "criticalIssues": 3,
+    "highPriorityTests": 3,
+    "refactoringOpportunities": 2
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Security",
+      "description": "BLOCK MERGE: Immediately replace all direct string concatenations in search queries with parameterized placeholders ($1, $2) to eliminate SQL injection vulnerabilities.",
+      "files": [
+        "src/todo.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Testing",
+      "description": "Implement unit tests validating SQL injection resilience and search results filtering in tests/todo.test.ts.",
+      "files": [
+        "src/todo.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Type Safety",
+      "description": "Update searchTodosByStatus parameter from string to boolean.",
+      "files": [
+        "src/todo.ts"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-02T17:19:06.556Z",
+    "duration": 4120,
+    "agentVersions": {
+      "orchestrator": "1.0.0",
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0"
+    }
+  }
+}

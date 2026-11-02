@@ -9,4 +9,5 @@ logs/
 coverage/
 *.tsbuildinfo
 .temp/
-reports/
+# reports/ is required for submission
+
